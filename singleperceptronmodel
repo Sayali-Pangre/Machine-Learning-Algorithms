@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Mar 12 21:02:36 2019
+
+@author: dell
+"""
+
+#Single Perceptron
+import numpy 
+import theano 
+import matplotlib.pyplot as plt
+#matrix
+x=theano.tensor.matrix(name='x')
+#array
+wval=numpy.asarray([numpy.random.randn(),numpy.random.randn()])
+#shared variables-will be required when needed to b shared within functions
+w=theano.shared(wval,name='w')
+b=theano.shared(0.5,name='b')
+
+#inputs
+#OR Gate  #single layer perceptron cannot predict xor o/p perfect so single layer NN is used
+xdata=[[0,0],[1,0],[0,1],[1,1]]
+ydata=[1,0,0,1]
+#Vector product of tensors x & w
+z=theano.tensor.dot(x,w)+b
+
+#Activation Function
+ahat=1/(1+theano.tensor.exp(-z))  #sigmoid function
+
+#define output variable
+a=theano.tensor.vector('a')
+
+#define cost function(how  wrong the model is)
+#-(ylog(p)+(1-y)log(1-p))
+
+cost=-(a*theano.tensor.log(ahat)+(1-a)*theano.tensor.log(1-ahat)).sum()
+
+#reasons for cost functions -w,b
+#partial differentitation of cost w.r.t. 'w','b'
+#gradient descent
+dcostdw=theano.tensor.grad(cost,w)
+dcostdb=theano.tensor.grad(cost,b)
+
+#apply GDA to compute the updated weights
+wn=w-0.005*dcostdw
+bn=b-0.005*dcostdb
+
+#training function
+train=theano.function([x,a],[ahat,cost],updates=[(w,wn),(b,bn)])
+
+cost1=[]
+for i in range(60000):
+    pred_val,costval=train(xdata,ydata)
+    print(costval)
+    cost1.append(costval)
+    
+print('The final outputs are:')
+for i in range(len(xdata)):
+    print("The o/p of x1=%d and x2=%d is %.3f"%(xdata[i][0],xdata[i][1],pred_val[i]))
+
+plt.plot(cost1,color='red')
+plt.show()
+
+

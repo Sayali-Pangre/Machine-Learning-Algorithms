@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar 11 16:14:35 2019
+
+@author: sayali
+"""
+#quandl.get
+import quandl
+import numpy as np
+#preprocessing-scaling
+#cross-validation-splitting dada set into train and test
+from sklearn import preprocessing,cross_validation  #split and scale
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+from matplotlib import style
+import datetime
+import math
+
+#-----------------------------------------------------------------
+style.use('ggplot')    #gray-gray plot Background
+df=quandl.get("WIKI/GOOGL") #this is quandl code for google data its in dataframe
+
+#['Open', 'High', 'Low', 'Close', 'Volume', 'Ex-Dividend', 'Split Ratio',
+ #'Adj. Open', 'Adj. High', 'Adj. Low', 'Adj. Close', 'Adj. Volume']
+
+print(df)
+
+df=df[['Adj. Open','Adj. Low','Adj. Close','Adj. High','Adj. Volume']]
+df['HL_PCT']=(df['Adj. High']-df['Adj. Low'])/df['Adj. Close']*100.0
+df['PCT_change']=(df['Adj. Close']-df['Adj. Open']/df['Adj. Open'])*100.0
+df=df[['Adj. Close','HL_PCT','PCT_change','Adj. Volume']]
+print(df.head())
+
+#--------------------------------------------------------------------
+
+forecast_col='Adj. Close'
+df.fillna(value=-99999,inplace=True)
+forecast_out=int(math.ceil(0.01*len(df)))
+
+df['label']=df['Adj. Close'].shift(-forecast_out)
+#we want list without last 30 observations
+
+X=np.array(df.drop(['label'],1))   #store data without first row i.e label
+X=preprocessing.scale(X)
+X_lately=X[-forecast_out:]
+#features
+X=X[:-forecast_out]
+df.dropna(inplace=True)
+y=np.array(df['label'])
+
+#training and testing
+
+X_train,X_test,y_train,y_test=cross_validation.train_test_split(X,y,test_size=0.2)
+
+regression_model=LinearRegression()
+regression_model.fit(X_train,y_train)
+confidence=regression_model.score(X_test,y_test)
+print(confidence)
+forecast_set=regression_model.predict(X_lately)
+
+#plotting 
+df['Forecast']=np.nan
+last_date=df.iloc[-1].name
+last_unix=last_date.timestamp()
+one_day=86400
+next_unix=last_unix+one_day
+
+for i in forecast_set:
+    next_date=datetime.datetime.fromtimestamp(next_unix)
+    next_unix+=86400#epoch value from 1 jan 1970 ie unix time
+    df.loc[next_date]=[np.nan for _ in range(len(df.columns)-1)]+[i]
+
+
+   
+plt.plot(df['Adj. Close'])
+plt.plot(df['Forecast'])
+plt.legend(loc=4)
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.show()
+
+plt.plot(df['Forecast'],c='b')
+plt.legend()
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.show()
